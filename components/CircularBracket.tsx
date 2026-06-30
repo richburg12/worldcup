@@ -102,43 +102,12 @@ export default function CircularBracket() {
   return (
     <div className="flex flex-col items-center w-full">
       <header className="w-full max-w-[920px] px-5 pt-7 pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-stone-900">
-              World Cup <span className="text-amber-600">2026</span>
-            </h1>
-            <p className="mt-1 max-w-md text-sm text-stone-500">
-              Tap a team in an open match to send them through — finished matches lock automatically.
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-            <button
-              onClick={() => setShowScores((v) => !v)}
-              aria-pressed={showScores}
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                showScores ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50'
-              }`}
-            >
-              Scores
-            </button>
-            <button
-              onClick={() => setShowTimes((v) => !v)}
-              aria-pressed={showTimes}
-              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                showTimes ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50'
-              }`}
-            >
-              Times
-            </button>
-            <button
-              onClick={() => setPicks({})}
-              disabled={!hasPicks}
-              className="rounded-full border border-stone-200 bg-white px-4 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-40"
-            >
-              Reset picks
-            </button>
-          </div>
-        </div>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold tracking-tight text-stone-900">
+          World Cup <span className="text-amber-600">2026</span>
+        </h1>
+        <p className="mt-1 max-w-md text-sm text-stone-500">
+          Tap a team in an open match to send them through — finished matches lock automatically.
+        </p>
 
         {data && (
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-stone-500">
@@ -154,9 +123,35 @@ export default function CircularBracket() {
             </span>
           </div>
         )}
-        {data && showTimes && timeZone && Object.keys(data.dates).length > 0 && (
-          <p className="mt-1 text-xs text-stone-400">Kickoff times shown in your local time ({timeZone}).</p>
-        )}
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setShowScores((v) => !v)}
+            aria-pressed={showScores}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+              showScores ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50'
+            }`}
+          >
+            Scores
+          </button>
+          <button
+            onClick={() => setShowTimes((v) => !v)}
+            aria-pressed={showTimes}
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+              showTimes ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50'
+            }`}
+          >
+            Times
+          </button>
+          <button
+            onClick={() => setPicks({})}
+            disabled={!hasPicks}
+            className="rounded-full border border-stone-200 bg-white px-4 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-40"
+          >
+            Reset picks
+          </button>
+        </div>
+
         {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
       </header>
 
@@ -352,7 +347,14 @@ export default function CircularBracket() {
       )}
 
       {champion && teamOf(champion) && (
-        <p className="mb-8 -mt-2 text-center text-lg font-semibold text-stone-800">🏆 Your champion: {teamOf(champion)!.name}</p>
+        <p className="mb-6 -mt-2 text-center text-lg font-semibold text-stone-800">🏆 Your champion: {teamOf(champion)!.name}</p>
+      )}
+
+      {/* Below the bracket so toggling Times on doesn't push the chart down. */}
+      {data && showTimes && timeZone && Object.keys(data.dates).length > 0 && (
+        <p className="mt-1 px-5 text-center text-xs text-stone-400">
+          Kickoff times shown in your local time ({timeZone}).
+        </p>
       )}
     </div>
   );
