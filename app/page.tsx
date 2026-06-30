@@ -18,6 +18,14 @@ const projects: Project[] = [
       'A live circular knockout bracket. Real results lock and advance teams on their own — and you can click through the rest to play out your own outcomes.',
     tag: 'Live',
   },
+  {
+    href: 'https://margcount.vercel.app',
+    external: true, // opens in a new tab
+    emoji: '🍹',
+    title: 'D GRANDE Margarita Sales Counter',
+    blurb: 'A live, POS-connected margarita sales counter for D GRANDE — Real Tex-Mex by Real Texans.',
+    tag: 'Live',
+  },
 ];
 
 export default function Landing() {
@@ -25,15 +33,17 @@ export default function Landing() {
     <main className="flex min-h-screen flex-col bg-white text-stone-900">
       {/* Hero */}
       <section className="mx-auto w-full max-w-4xl px-6 pt-20 pb-10 sm:pt-28">
-        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">A home for things I build</p>
+        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">Stuff Richard has built because&hellip;</p>
         <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-7xl">
           We can just
           <br />
           make shit now<span className="text-amber-600">.</span>
         </h1>
         <p className="mt-6 max-w-xl text-lg text-stone-500">
-          Little tools and toys, built fast because the barrier to making something real has basically disappeared. Here&apos;s
-          what I&apos;ve been making.
+          Tools and toys I&apos;ve built. Some for fun. Some for work.{' '}
+          <a href="mailto:richburg@gmail.com" className="font-medium text-amber-600 hover:underline">
+            richburg@gmail.com
+          </a>
         </p>
       </section>
 
