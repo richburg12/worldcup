@@ -13,8 +13,8 @@ const display = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "World Cup 2026 Bracket",
-  description: "Interactive circular World Cup 2026 bracket — play out the knockout rounds.",
+  title: "We can just make shit now",
+  description: "A home for the little tools and toys I build.",
 };
 
 export default function RootLayout({

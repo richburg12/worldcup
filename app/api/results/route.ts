@@ -1,25 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { buildBracket, fetchMatches, knockoutMatches, summarise } from '@/lib/footballData';
+import { fetchMatches, getBracketSnapshot, knockoutMatches, summarise } from '@/lib/footballData';
 
 const STAGE_ORDER = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
 
-// Public endpoint (no auth) so it can be polled by the browser and Vercel crons.
+// Public endpoint (no auth) so it can be polled by the browser.
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-// Per-instance in-memory cache. football-data's free tier is rate-limited, so we
-// don't call it on every request. NOTE: this cache is NOT shared across serverless
-// instances — it's purely a per-instance request-rate guard, which is fine here
-// because the data is non-critical and refreshed every minute by the cron anyway.
-type Cache = { at: number; payload: unknown };
-let cache: Cache | null = null;
-const TTL_MS = 60_000;
 
 export async function GET(request: NextRequest) {
   const debug = request.nextUrl.searchParams.get('debug') === '1';
   const full = request.nextUrl.searchParams.get('full') === '1';
-  const fresh = request.nextUrl.searchParams.get('fresh') === '1';
 
+  // Inspection helpers (manual use only) hit the feed directly, bypassing the shared cache.
   if (full) {
     const all = await fetchMatches();
     const rows = knockoutMatches(all)
@@ -39,23 +31,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    if (!fresh && cache && Date.now() - cache.at < TTL_MS) {
-      return NextResponse.json(cache.payload);
+    if (debug) {
+      return NextResponse.json({ ok: true, debug: summarise(knockoutMatches(await fetchMatches())) });
     }
-
-    const all = await fetchMatches();
-
-    const payload = debug
-      ? { ok: true, debug: summarise(knockoutMatches(all)) }
-      : { ok: true, bracket: buildBracket(all) };
-
-    cache = { at: Date.now(), payload };
-    return NextResponse.json(payload);
+    // Shared 60s cache across all instances — football-data is hit at most once a minute.
+    const bracket = await getBracketSnapshot();
+    return NextResponse.json({ ok: true, bracket });
   } catch (err) {
     console.error('[RESULTS] fetch failed:', err);
-    const message = err instanceof Error && /not set/.test(err.message)
-      ? 'FOOTBALL_DATA_TOKEN is not set'
-      : 'Could not load results feed';
+    const message =
+      err instanceof Error && /not set/.test(err.message) ? 'FOOTBALL_DATA_TOKEN is not set' : 'Could not load results feed';
     return NextResponse.json({ ok: false, error: message }, { status: 502 });
   }
 }

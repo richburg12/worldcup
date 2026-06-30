@@ -6,6 +6,8 @@
 // from football-data's match list to our circular bracket positions is finalised
 // after we inspect the live data shape (see /api/results?debug=1).
 
+import { unstable_cache } from 'next/cache';
+
 const BASE = 'https://api.football-data.org/v4';
 
 export type FdScore = {
@@ -44,8 +46,9 @@ function competition(): string {
 export async function fetchMatches(): Promise<FdMatch[]> {
   const res = await fetch(`${BASE}/competitions/${competition()}/matches`, {
     headers: { 'X-Auth-Token': token() },
-    // football-data is rate-limited; let Next cache the upstream call briefly.
-    next: { revalidate: 60 },
+    // The upstream call is rate-limited; caching is handled one level up by
+    // getBracketSnapshot (shared across all serverless instances), so don't cache here.
+    cache: 'no-store',
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
@@ -174,6 +177,15 @@ export function buildBracket(matches: FdMatch[]): BracketData {
     lastUpdated: new Date().toISOString(),
   };
 }
+
+// Shared, cross-instance snapshot of the bracket. football-data is hit at most once every
+// 60 seconds globally (not per visitor), keeping us well under the free-tier rate limit.
+// If a refresh fails, Next.js keeps serving the last good snapshot.
+export const getBracketSnapshot = unstable_cache(
+  async (): Promise<BracketData> => buildBracket(await fetchMatches()),
+  ['wc-bracket-snapshot'],
+  { revalidate: 60, tags: ['wc-bracket'] }
+);
 
 // Compact summary used to inspect the real data shape before finalising the
 // bracket mapping. Hit /api/results?debug=1 once the token is set.
