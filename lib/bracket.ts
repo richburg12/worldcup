@@ -78,6 +78,8 @@ export type MatchLink = {
   stubB: Seg;
   bar: string; // SVG path (quadratic curve joining the two opponents)
   stem: Seg; // winner's path to the next round
+  scoreAt: { x: number; y: number }; // arc midpoint — where a completed match's score sits
+  dateAt: { x: number; y: number }; // between the two team nodes — where an upcoming kickoff time sits
 };
 
 export const MATCH_LINKS: MatchLink[] = [];
@@ -108,6 +110,8 @@ for (let r = 0; r < ROUNDS.length - 1; r++) {
       stubB: { x1: bEdge.x, y1: bEdge.y, x2: jB.x, y2: jB.y },
       bar: `M ${jA.x.toFixed(1)} ${jA.y.toFixed(1)} A ${rJoin.toFixed(1)} ${rJoin.toFixed(1)} 0 0 ${sweep} ${jB.x.toFixed(1)} ${jB.y.toFixed(1)}`,
       stem: { x1: stemStart.x, y1: stemStart.y, x2: parentEdge.x, y2: parentEdge.y },
+      scoreAt: { x: stemStart.x, y: stemStart.y },
+      dateAt: polar(child.radius, thP),
     });
   }
 }

@@ -7,11 +7,34 @@ import type { BracketData } from '@/lib/footballData';
 const STORAGE_KEY = 'wc2026-picks-v1';
 const POLL_MS = 60_000;
 
+// Format a UTC kickoff into two short lines in the viewer's local time zone, e.g. "Sun 12/7" / "1 AM".
+function formatKickoff(iso: string): { day: string; time: string } {
+  const d = new Date(iso);
+  const weekday = d.toLocaleDateString(undefined, { weekday: 'short' });
+  const day = `${weekday} ${d.getDate()}/${d.getMonth() + 1}`;
+  let h = d.getHours();
+  const ampm = h < 12 ? 'AM' : 'PM';
+  h = h % 12 || 12;
+  const min = d.getMinutes();
+  const time = min ? `${h}:${String(min).padStart(2, '0')} ${ampm}` : `${h} ${ampm}`;
+  return { day, time };
+}
+
 export default function CircularBracket() {
   const [data, setData] = useState<BracketData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [picks, setPicks] = useState<Picks>({});
   const [loaded, setLoaded] = useState(false);
+  const [timeZone, setTimeZone] = useState<string | null>(null);
+
+  // Read the viewer's time zone (client only, to avoid any server/client mismatch).
+  useEffect(() => {
+    try {
+      setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // Load saved hypothetical picks once on mount.
   useEffect(() => {
@@ -109,6 +132,9 @@ export default function CircularBracket() {
             </span>
           </div>
         )}
+        {data && timeZone && Object.keys(data.dates).length > 0 && (
+          <p className="mt-1 text-xs text-stone-400">Kickoff times shown in your local time ({timeZone}).</p>
+        )}
         {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
       </header>
 
@@ -134,6 +160,37 @@ export default function CircularBracket() {
               <path d={l.bar} />
             </g>
           ))}
+
+          {/* completed-match scores (on the arc) and upcoming kickoff times (between the teams, R16+) */}
+          {MATCH_LINKS.map((l) => {
+            const key = `${l.round}:${l.match}`;
+            const score = data.scores[key];
+            const completed = Boolean(data.results[key]);
+            if (completed && score) {
+              const aWin = slots[l.round][2 * l.match] === data.results[key];
+              return (
+                <g key={`sc-${key}`}>
+                  <rect x={l.scoreAt.x - 9} y={l.scoreAt.y - 13} width={18} height={26} rx={5} fill="#ffffff" stroke="#e7e5e4" />
+                  <text x={l.scoreAt.x} y={l.scoreAt.y - 5} textAnchor="middle" dominantBaseline="middle" fontSize={11} fontWeight={aWin ? 700 : 500} fill={aWin ? '#16a34a' : '#78716c'}>
+                    {score.a}
+                  </text>
+                  <text x={l.scoreAt.x} y={l.scoreAt.y + 6} textAnchor="middle" dominantBaseline="middle" fontSize={11} fontWeight={!aWin ? 700 : 500} fill={!aWin ? '#16a34a' : '#78716c'}>
+                    {score.b}
+                  </text>
+                </g>
+              );
+            }
+            if (l.round >= 1 && !completed && data.dates[key]) {
+              const { day, time } = formatKickoff(data.dates[key]);
+              return (
+                <g key={`dt-${key}`} fontSize={10.5} fontWeight={600} fill="#57534e" stroke="#ffffff" strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">
+                  <text x={l.dateAt.x} y={l.dateAt.y - 5} textAnchor="middle" dominantBaseline="middle">{day}</text>
+                  <text x={l.dateAt.x} y={l.dateAt.y + 7} textAnchor="middle" dominantBaseline="middle">{time}</text>
+                </g>
+              );
+            }
+            return null;
+          })}
 
           {/* round label pills, stacked down the bottom gap (between the two bottom teams) */}
           {ROUNDS.slice(0, 5).map((r, idx) => {

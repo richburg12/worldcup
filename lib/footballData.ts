@@ -115,6 +115,10 @@ export type BracketData = {
   teams: Record<string, BracketTeam>;
   seed: (string | null)[]; // 32 team ids in tree-leaf order (consecutive pairs are R32 matches)
   results: Record<string, string>; // `${round}:${matchIndex}` -> winning team id (finalised only)
+  // `${round}:${matchIndex}` -> full-time score for slot A (2m) and slot B (2m+1). Excludes shootouts.
+  scores: Record<string, { a: number; b: number }>;
+  // `${round}:${matchIndex}` -> UTC kickoff ISO string (any matchup with >=1 known team).
+  dates: Record<string, string>;
   finished: number; // count of finished knockout matches
   total: number; // total knockout matches
   lastUpdated: string;
@@ -122,6 +126,15 @@ export type BracketData = {
 
 // Round sizes from R32 (outer) inward; matches per round = size / 2.
 const ROUND_SIZES = [32, 16, 8, 4, 2, 1];
+
+// football-data stage -> our round index (0 = R32 outer).
+const STAGE_TO_ROUND: Record<string, number> = {
+  LAST_32: 0,
+  LAST_16: 1,
+  QUARTER_FINALS: 2,
+  SEMI_FINALS: 3,
+  FINAL: 4,
+};
 
 // Turn the live football-data match list into our circular-bracket model.
 // We rely on two facts confirmed from the live feed:
@@ -155,13 +168,42 @@ export function buildBracket(matches: FdMatch[]): BracketData {
     seed.push(m.awayTeam?.id != null ? String(m.awayTeam.id) : null);
   });
 
-  // Lookup of finished matches keyed by the (unordered) pair of team ids -> winner id.
-  const winners = new Map<string, string>();
+  // seed position lookup, used to map any feed match to its bracket slot by team identity.
+  const seedIndex = new Map<string, number>();
+  seed.forEach((id, i) => {
+    if (id) seedIndex.set(id, i);
+  });
+
+  // Lookup of finished matches keyed by the (unordered) pair of team ids.
+  const winners = new Map<string, string>(); // pair -> winner id
+  const scoreByPair = new Map<string, { homeId: string; awayId: string; home: number; away: number }>();
+  // Kickoff dates keyed by bracket slot `${round}:${matchIndex}` (mapped via any known team).
+  const dates: Record<string, string> = {};
   let finished = 0;
   for (const m of knockout) {
+    const round = STAGE_TO_ROUND[m.stage];
+    if (round == null) continue;
+    const homeId = m.homeTeam?.id != null ? String(m.homeTeam.id) : null;
+    const awayId = m.awayTeam?.id != null ? String(m.awayTeam.id) : null;
+
+    // Place this match's kickoff time onto its bracket slot, using whichever team we know.
+    const knownId = homeId && seedIndex.has(homeId) ? homeId : awayId && seedIndex.has(awayId) ? awayId : null;
+    if (knownId != null && m.utcDate) {
+      const matchIndex = Math.floor(seedIndex.get(knownId)! / 2 ** (round + 1));
+      dates[`${round}:${matchIndex}`] = m.utcDate;
+    }
+
     const w = winningTeam(m);
-    if (w?.id != null && m.homeTeam?.id != null && m.awayTeam?.id != null) {
-      winners.set(pairKey(String(m.homeTeam.id), String(m.awayTeam.id)), String(w.id));
+    if (w?.id != null && homeId && awayId) {
+      winners.set(pairKey(homeId, awayId), String(w.id));
+      // Full-time score, with any penalty shootout backed out so it shows the 90/120-min result.
+      let home = m.score.fullTime?.home ?? 0;
+      let away = m.score.fullTime?.away ?? 0;
+      if (m.score.duration === 'PENALTY_SHOOTOUT' && m.score.penalties) {
+        home -= m.score.penalties.home ?? 0;
+        away -= m.score.penalties.away ?? 0;
+      }
+      scoreByPair.set(pairKey(homeId, awayId), { homeId, awayId, home, away });
       finished++;
     }
   }
@@ -171,6 +213,7 @@ export function buildBracket(matches: FdMatch[]): BracketData {
   const slots: (string | null)[][] = ROUND_SIZES.map((n) => new Array(n).fill(null));
   for (let i = 0; i < seed.length; i++) slots[0][i] = seed[i];
   const results: Record<string, string> = {};
+  const scores: Record<string, { a: number; b: number }> = {};
   for (let r = 0; r < ROUND_SIZES.length - 1; r++) {
     const matchCount = ROUND_SIZES[r] / 2;
     for (let m = 0; m < matchCount; m++) {
@@ -182,6 +225,11 @@ export function buildBracket(matches: FdMatch[]): BracketData {
           results[`${r}:${m}`] = wid;
           slots[r + 1][m] = wid;
         }
+        const sp = scoreByPair.get(pairKey(a, b));
+        if (sp) {
+          // Map the feed's home/away scores onto slot A (2m) and slot B (2m+1).
+          scores[`${r}:${m}`] = { a: sp.homeId === a ? sp.home : sp.away, b: sp.homeId === b ? sp.home : sp.away };
+        }
       }
     }
   }
@@ -190,6 +238,8 @@ export function buildBracket(matches: FdMatch[]): BracketData {
     teams,
     seed,
     results,
+    scores,
+    dates,
     finished,
     total: knockout.length,
     lastUpdated: new Date().toISOString(),
@@ -201,7 +251,7 @@ export function buildBracket(matches: FdMatch[]): BracketData {
 // If a refresh fails, Next.js keeps serving the last good snapshot.
 export const getBracketSnapshot = unstable_cache(
   async (): Promise<BracketData> => buildBracket(await fetchMatches()),
-  ['wc-bracket-snapshot'],
+  ['wc-bracket-snapshot-v2'],
   { revalidate: 60, tags: ['wc-bracket'] }
 );
 
