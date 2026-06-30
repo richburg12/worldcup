@@ -1,13 +1,38 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 type Project = {
   href: string;
   external?: boolean;
-  emoji: string;
+  emoji?: string;
+  icon?: ReactNode;
   title: string;
   blurb: string;
   tag?: string;
 };
+
+// Salt-rimmed margarita coupe with a lime wedge — so the card doesn't read as a daiquiri.
+function MargaritaGlass({ className }: { className?: string }) {
+  const salt = [9, 14, 19, 24, 29, 34, 39];
+  return (
+    <svg viewBox="0 0 48 48" className={className} xmlns="http://www.w3.org/2000/svg">
+      {/* drink */}
+      <path d="M11 15 L24 29 L37 15 Z" fill="#c7e58a" />
+      {/* glass bowl + stem + foot */}
+      <path d="M8 14.5 L24 31 L40 14.5" fill="none" stroke="#0c0a09" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+      <line x1="24" y1="31" x2="24" y2="40" stroke="#0c0a09" strokeWidth="2.2" strokeLinecap="round" />
+      <line x1="16" y1="41" x2="32" y2="41" stroke="#0c0a09" strokeWidth="2.2" strokeLinecap="round" />
+      {/* rim + salt */}
+      <line x1="7" y1="14.5" x2="41" y2="14.5" stroke="#0c0a09" strokeWidth="2.2" strokeLinecap="round" />
+      {salt.map((x) => (
+        <circle key={x} cx={x} cy={12.5} r={1.5} fill="#fafaf9" stroke="#d6d3d1" strokeWidth="0.5" />
+      ))}
+      {/* lime wedge on the rim */}
+      <path d="M34 14.5 A5 5 0 0 1 44 14.5 Z" fill="#5fa83a" stroke="#0c0a09" strokeWidth="1" strokeLinejoin="round" />
+      <line x1="39" y1="14.5" x2="39" y2="18.2" stroke="#e6f5c9" strokeWidth="0.8" />
+    </svg>
+  );
+}
 
 const projects: Project[] = [
   {
@@ -21,7 +46,7 @@ const projects: Project[] = [
   {
     href: 'https://margcount.vercel.app',
     external: true, // opens in a new tab
-    emoji: '🍹',
+    icon: <MargaritaGlass className="h-11 w-11" />,
     title: 'D GRANDE Margarita Sales Counter',
     blurb: 'A live, POS-connected margarita sales counter for D GRANDE — Real Tex-Mex by Real Texans.',
     tag: 'Live',
@@ -59,9 +84,13 @@ export default function Landing() {
               className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md"
             >
               <div className="mb-4 flex items-start justify-between">
-                <span className="text-4xl" aria-hidden>
-                  {p.emoji}
-                </span>
+                {p.icon ? (
+                  <span aria-hidden>{p.icon}</span>
+                ) : (
+                  <span className="text-4xl" aria-hidden>
+                    {p.emoji}
+                  </span>
+                )}
                 {p.tag && (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
                     <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> {p.tag}
