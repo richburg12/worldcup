@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchMatches, getBracketSnapshot, knockoutMatches, summarise } from '@/lib/footballData';
+import { fetchMatches, getBracket, knockoutMatches, summarise } from '@/lib/footballData';
 
 const STAGE_ORDER = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
 
@@ -30,17 +30,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, rows });
   }
 
-  try {
-    if (debug) {
+  if (debug) {
+    try {
       return NextResponse.json({ ok: true, debug: summarise(knockoutMatches(await fetchMatches())) });
+    } catch (err) {
+      console.error('[RESULTS] debug fetch failed:', err);
+      return NextResponse.json({ ok: false, error: 'Could not load results feed' }, { status: 502 });
     }
-    // Shared 60s cache across all instances — football-data is hit at most once a minute.
-    const bracket = await getBracketSnapshot();
-    return NextResponse.json({ ok: true, bracket });
-  } catch (err) {
-    console.error('[RESULTS] fetch failed:', err);
-    const message =
-      err instanceof Error && /not set/.test(err.message) ? 'FOOTBALL_DATA_TOKEN is not set' : 'Could not load results feed';
-    return NextResponse.json({ ok: false, error: message }, { status: 502 });
   }
+
+  // Resilient: serves live data when available, otherwise the baked-in snapshot. Never errors.
+  const { bracket, source } = await getBracket();
+  return NextResponse.json({ ok: true, bracket, source });
 }

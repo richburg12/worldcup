@@ -7,6 +7,7 @@
 // after we inspect the live data shape (see /api/results?debug=1).
 
 import { unstable_cache } from 'next/cache';
+import { FALLBACK_BRACKET } from './fallbackBracket';
 
 const BASE = 'https://api.football-data.org/v4';
 
@@ -42,9 +43,16 @@ function competition(): string {
   return process.env.FOOTBALL_DATA_COMPETITION || 'WC';
 }
 
-// Fetch all matches for the configured competition.
+// Pin the season (e.g. 2026) so the feed can never silently switch to a future World Cup.
+function season(): string | null {
+  return process.env.FOOTBALL_DATA_SEASON || null;
+}
+
+// Fetch all matches for the configured competition (and pinned season, if set).
 export async function fetchMatches(): Promise<FdMatch[]> {
-  const res = await fetch(`${BASE}/competitions/${competition()}/matches`, {
+  const s = season();
+  const url = `${BASE}/competitions/${competition()}/matches${s ? `?season=${s}` : ''}`;
+  const res = await fetch(url, {
     headers: { 'X-Auth-Token': token() },
     // The upstream call is rate-limited; caching is handled one level up by
     // getBracketSnapshot (shared across all serverless instances), so don't cache here.
@@ -186,6 +194,36 @@ export const getBracketSnapshot = unstable_cache(
   ['wc-bracket-snapshot'],
   { revalidate: 60, tags: ['wc-bracket'] }
 );
+
+// A bracket is "usable" only if it's a full 32-team draw — guards against the feed
+// returning an empty/partial future season if the WC code ever repoints.
+export function isUsableBracket(b: BracketData | null | undefined): boolean {
+  return (
+    !!b &&
+    Array.isArray(b.seed) &&
+    b.seed.length === 32 &&
+    b.seed.every(Boolean) &&
+    Object.keys(b.teams ?? {}).length >= 2
+  );
+}
+
+// Resilient bracket source. Never throws — the site always renders something:
+//   - FREEZE_BRACKET=1  -> always serve the baked-in snapshot (use once the final is played)
+//   - live feed valid   -> serve live
+//   - live feed down/invalid -> serve the baked-in snapshot instead of erroring
+export async function getBracket(): Promise<{ bracket: BracketData; source: 'live' | 'frozen' | 'fallback' }> {
+  if (process.env.FREEZE_BRACKET === '1') {
+    return { bracket: FALLBACK_BRACKET, source: 'frozen' };
+  }
+  try {
+    const live = await getBracketSnapshot();
+    if (isUsableBracket(live)) return { bracket: live, source: 'live' };
+    console.warn('[RESULTS] live feed returned an unusable bracket; serving fallback snapshot');
+  } catch (err) {
+    console.error('[RESULTS] live feed failed; serving fallback snapshot:', err);
+  }
+  return { bracket: FALLBACK_BRACKET, source: 'fallback' };
+}
 
 // Compact summary used to inspect the real data shape before finalising the
 // bracket mapping. Hit /api/results?debug=1 once the token is set.
