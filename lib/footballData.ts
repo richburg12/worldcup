@@ -136,6 +136,25 @@ const STAGE_TO_ROUND: Record<string, number> = {
   FINAL: 4,
 };
 
+// Fixed 2026 knockout wiring: football-data match id -> our display bracket slot {round, slot}.
+// The bracket structure ("winner of match N") is constant regardless of teams, so this lets every
+// R16+ slot show its kickoff time before the teams are known. The live team-based mapping below
+// overrides this whenever a real team lands in a slot, so it self-corrects if anything is off.
+const KNOCKOUT_WIRING: Record<string, { round: number; slot: number }> = {
+  // Round of 16
+  '537375': { round: 1, slot: 4 }, '537376': { round: 1, slot: 5 },
+  '537377': { round: 1, slot: 0 }, '537378': { round: 1, slot: 1 },
+  '537379': { round: 1, slot: 6 }, '537380': { round: 1, slot: 7 },
+  '537381': { round: 1, slot: 2 }, '537382': { round: 1, slot: 3 },
+  // Quarter-finals
+  '537383': { round: 2, slot: 2 }, '537384': { round: 2, slot: 3 },
+  '537385': { round: 2, slot: 0 }, '537386': { round: 2, slot: 1 },
+  // Semi-finals
+  '537387': { round: 3, slot: 1 }, '537388': { round: 3, slot: 0 },
+  // Final
+  '537390': { round: 4, slot: 0 },
+};
+
 // Turn the live football-data match list into our circular-bracket model.
 // We rely on two facts confirmed from the live feed:
 //   1. Round-of-32 matches, ordered by id, are in bracket order; consecutive pairs (0,1)(2,3)...
@@ -177,8 +196,13 @@ export function buildBracket(matches: FdMatch[]): BracketData {
   // Lookup of finished matches keyed by the (unordered) pair of team ids.
   const winners = new Map<string, string>(); // pair -> winner id
   const scoreByPair = new Map<string, { homeId: string; awayId: string; home: number; away: number }>();
-  // Kickoff dates keyed by bracket slot `${round}:${matchIndex}` (mapped via any known team).
+  // Kickoff dates keyed by bracket slot `${round}:${matchIndex}`.
   const dates: Record<string, string> = {};
+  // First, place every R16+ kickoff time onto its slot via the fixed wiring (works with no teams).
+  for (const m of knockout) {
+    const w = KNOCKOUT_WIRING[String(m.id)];
+    if (w && m.utcDate) dates[`${w.round}:${w.slot}`] = m.utcDate;
+  }
   let finished = 0;
   for (const m of knockout) {
     const round = STAGE_TO_ROUND[m.stage];
@@ -251,7 +275,7 @@ export function buildBracket(matches: FdMatch[]): BracketData {
 // If a refresh fails, Next.js keeps serving the last good snapshot.
 export const getBracketSnapshot = unstable_cache(
   async (): Promise<BracketData> => buildBracket(await fetchMatches()),
-  ['wc-bracket-snapshot-v2'],
+  ['wc-bracket-snapshot-v3'],
   { revalidate: 60, tags: ['wc-bracket'] }
 );
 
