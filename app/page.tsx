@@ -65,8 +65,10 @@ export default function Landing() {
           make shit now<span className="text-amber-600">.</span>
         </h1>
         <p className="mt-6 max-w-xl text-lg text-stone-500">
-          Tools and toys I&apos;ve built. Some for fun. Some for work.{' '}
-          <em className="text-stone-400">Claude may have helped.</em>{' '}
+          Tools and toys I&apos;ve built. Some for fun. Some for work.
+          <br />
+          <em className="text-stone-400">Claude may have helped.</em>
+          <br />
           <a href="mailto:richburg@gmail.com" className="font-medium text-amber-600 hover:underline">
             richburg@gmail.com
           </a>
