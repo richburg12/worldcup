@@ -13,8 +13,21 @@ const display = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://wecanjustmakeshitnow.com"),
   title: "We can just make shit now",
-  description: "A home for the little tools and toys I build.",
+  description: "Tools and toys Richard builds. Some for fun, some for work.",
+  openGraph: {
+    title: "We can just make shit now",
+    description: "Tools and toys Richard builds. Some for fun, some for work.",
+    url: "https://wecanjustmakeshitnow.com",
+    siteName: "We can just make shit now",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "We can just make shit now",
+    description: "Tools and toys Richard builds. Some for fun, some for work.",
+  },
 };
 
 export default function RootLayout({
