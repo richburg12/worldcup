@@ -58,7 +58,7 @@ export default function Landing() {
     <main className="flex min-h-screen flex-col bg-white text-stone-900">
       {/* Hero */}
       <section className="mx-auto w-full max-w-4xl px-6 pt-20 pb-10 sm:pt-28">
-        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">Stuff Richard has built because&hellip;</p>
+        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-amber-600">Stuff Richard built because&hellip;</p>
         <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-7xl">
           We can just
           <br />

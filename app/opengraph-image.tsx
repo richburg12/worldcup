@@ -21,7 +21,7 @@ export default function Image() {
         }}
       >
         <div style={{ display: 'flex', fontSize: 26, letterSpacing: 6, color: '#d97706', fontWeight: 700, marginBottom: 30 }}>
-          STUFF RICHARD HAS BUILT BECAUSE...
+          STUFF RICHARD BUILT BECAUSE...
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', fontSize: 100, fontWeight: 800, color: '#fafaf9', lineHeight: 1.04 }}>
           <div style={{ display: 'flex' }}>We can just</div>
