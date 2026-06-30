@@ -89,21 +89,24 @@ for (let r = 0; r < ROUNDS.length - 1; r++) {
     const thA = angles[r][2 * m];
     const thB = angles[r][2 * m + 1];
     const thP = angles[r + 1][m];
-    const rJoin = child.radius - (child.radius - parent.radius) * 0.45;
+    // The bar sits on the ring boundary between this round and the next, drawn as a true
+    // circular arc centred on the chart centre so it follows the curve of that boundary.
+    const rJoin = (child.radius + parent.radius) / 2;
     const aEdge = polar(child.radius - child.nodeR, thA);
     const bEdge = polar(child.radius - child.nodeR, thB);
     const jA = polar(rJoin, thA);
     const jB = polar(rJoin, thB);
-    const ctrl = polar(rJoin * 0.99, thP);
     const stemStart = polar(rJoin, thP);
     const parentEdge = polar(parent.radius + parent.nodeR, thP);
+    // sweep direction that keeps the arc concentric (the minor arc, which passes through thP)
+    const sweep = thB > thA ? 1 : 0;
     MATCH_LINKS.push({
       round: r,
       match: m,
       color: child.labelColor,
       stubA: { x1: aEdge.x, y1: aEdge.y, x2: jA.x, y2: jA.y },
       stubB: { x1: bEdge.x, y1: bEdge.y, x2: jB.x, y2: jB.y },
-      bar: `M ${jA.x.toFixed(1)} ${jA.y.toFixed(1)} Q ${ctrl.x.toFixed(1)} ${ctrl.y.toFixed(1)} ${jB.x.toFixed(1)} ${jB.y.toFixed(1)}`,
+      bar: `M ${jA.x.toFixed(1)} ${jA.y.toFixed(1)} A ${rJoin.toFixed(1)} ${rJoin.toFixed(1)} 0 0 ${sweep} ${jB.x.toFixed(1)} ${jB.y.toFixed(1)}`,
       stem: { x1: stemStart.x, y1: stemStart.y, x2: parentEdge.x, y2: parentEdge.y },
     });
   }
