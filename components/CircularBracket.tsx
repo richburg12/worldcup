@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BANDS, CX, CY, computeBracket, MATCH_LINKS, NODES, Picks, polar, ROUNDS } from '@/lib/bracket';
 import type { BracketData } from '@/lib/footballData';
 
@@ -49,8 +49,12 @@ export default function CircularBracket() {
     setLoaded(true);
   }, []);
 
-  // Fetch the live bracket, then refresh every minute.
+  const lastRefresh = useRef(0);
+
+  // Fetch the live bracket. Hits our own cached endpoint, so any number of these is cheap —
+  // football-data itself is only called ~once/minute regardless of traffic (shared server cache).
   const refresh = useCallback(async () => {
+    lastRefresh.current = Date.now();
     try {
       const res = await fetch('/api/results', { cache: 'no-store' });
       const json = await res.json();
@@ -66,9 +70,29 @@ export default function CircularBracket() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    let followUp: ReturnType<typeof setTimeout> | undefined;
+    // Refresh now, then once more a few seconds later to catch the server cache's background
+    // refresh (so a freshly reopened tab updates within seconds instead of next poll).
+    const refreshBurst = () => {
+      refresh();
+      clearTimeout(followUp);
+      followUp = setTimeout(refresh, 4000);
+    };
+    // When the tab regains focus, refresh — but not more than once every 15s.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastRefresh.current > 15_000) refreshBurst();
+    };
+
+    refreshBurst();
     const id = setInterval(refresh, POLL_MS);
-    return () => clearInterval(id);
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      clearInterval(id);
+      clearTimeout(followUp);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, [refresh]);
 
   const { slots, validPicks } = data
