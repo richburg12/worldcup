@@ -26,6 +26,8 @@ export default function CircularBracket() {
   const [picks, setPicks] = useState<Picks>({});
   const [loaded, setLoaded] = useState(false);
   const [timeZone, setTimeZone] = useState<string | null>(null);
+  const [showScores, setShowScores] = useState(false);
+  const [showTimes, setShowTimes] = useState(false);
 
   // Read the viewer's time zone (client only, to avoid any server/client mismatch).
   useEffect(() => {
@@ -109,13 +111,33 @@ export default function CircularBracket() {
               Tap a team in an open match to send them through — finished matches lock automatically.
             </p>
           </div>
-          <button
-            onClick={() => setPicks({})}
-            disabled={!hasPicks}
-            className="shrink-0 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium text-stone-600 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-40"
-          >
-            Reset picks
-          </button>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <button
+              onClick={() => setShowScores((v) => !v)}
+              aria-pressed={showScores}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                showScores ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50'
+              }`}
+            >
+              Scores
+            </button>
+            <button
+              onClick={() => setShowTimes((v) => !v)}
+              aria-pressed={showTimes}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                showTimes ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-stone-200 bg-white text-stone-500 hover:bg-stone-50'
+              }`}
+            >
+              Times
+            </button>
+            <button
+              onClick={() => setPicks({})}
+              disabled={!hasPicks}
+              className="rounded-full border border-stone-200 bg-white px-4 py-1.5 text-sm font-medium text-stone-600 shadow-sm transition-colors hover:bg-stone-50 disabled:opacity-40"
+            >
+              Reset picks
+            </button>
+          </div>
         </div>
 
         {data && (
@@ -132,7 +154,7 @@ export default function CircularBracket() {
             </span>
           </div>
         )}
-        {data && timeZone && Object.keys(data.dates).length > 0 && (
+        {data && showTimes && timeZone && Object.keys(data.dates).length > 0 && (
           <p className="mt-1 text-xs text-stone-400">Kickoff times shown in your local time ({timeZone}).</p>
         )}
         {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
@@ -166,7 +188,7 @@ export default function CircularBracket() {
             const key = `${l.round}:${l.match}`;
             const score = data.scores[key];
             const completed = Boolean(data.results[key]);
-            if (completed && score) {
+            if (showScores && completed && score) {
               const aWin = slots[l.round][2 * l.match] === data.results[key];
               return (
                 <g key={`sc-${key}`}>
@@ -180,7 +202,7 @@ export default function CircularBracket() {
                 </g>
               );
             }
-            if (l.round >= 1 && !completed && data.dates[key]) {
+            if (showTimes && l.round >= 1 && !completed && data.dates[key]) {
               const { day, time } = formatKickoff(data.dates[key]);
               return (
                 <g key={`dt-${key}`} fontSize={10.5} fontWeight={600} fill="#57534e">
