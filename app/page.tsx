@@ -66,6 +66,7 @@ export default function Landing() {
         </h1>
         <p className="mt-6 max-w-xl text-lg text-stone-500">
           Tools and toys I&apos;ve built. Some for fun. Some for work.{' '}
+          <em className="text-stone-400">Claude may have helped.</em>{' '}
           <a href="mailto:richburg@gmail.com" className="font-medium text-amber-600 hover:underline">
             richburg@gmail.com
           </a>
