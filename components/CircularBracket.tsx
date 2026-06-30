@@ -183,7 +183,7 @@ export default function CircularBracket() {
             if (l.round >= 1 && !completed && data.dates[key]) {
               const { day, time } = formatKickoff(data.dates[key]);
               return (
-                <g key={`dt-${key}`} fontSize={10.5} fontWeight={600} fill="#57534e" stroke="#ffffff" strokeWidth={3} strokeLinejoin="round" paintOrder="stroke">
+                <g key={`dt-${key}`} fontSize={10.5} fontWeight={600} fill="#57534e">
                   <text x={l.dateAt.x} y={l.dateAt.y - 5} textAnchor="middle" dominantBaseline="middle">{day}</text>
                   <text x={l.dateAt.x} y={l.dateAt.y + 7} textAnchor="middle" dominantBaseline="middle">{time}</text>
                 </g>
