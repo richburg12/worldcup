@@ -101,6 +101,16 @@ function flagFor(t: FdTeam): string | null {
   return t.crest ?? null;
 }
 
+// Tidy up the feed's display names (flag lookups above still use the original feed names).
+const NAME_OVERRIDES: Record<string, string> = {
+  'Cape Verde Islands': 'Cape Verde',
+  'Bosnia-Herzegovina': 'Bosnia & Herzegovina',
+};
+function displayName(t: FdTeam, id: string): string {
+  const n = t.name ?? '';
+  return NAME_OVERRIDES[n] ?? (n || id);
+}
+
 export type BracketData = {
   teams: Record<string, BracketTeam>;
   seed: (string | null)[]; // 32 team ids in tree-leaf order (consecutive pairs are R32 matches)
@@ -126,7 +136,7 @@ export function buildBracket(matches: FdMatch[]): BracketData {
   const register = (t: FdTeam | undefined | null) => {
     if (t && t.id != null) {
       const id = String(t.id);
-      if (!teams[id]) teams[id] = { id, name: t.name ?? id, crest: flagFor(t) };
+      if (!teams[id]) teams[id] = { id, name: displayName(t, id), crest: flagFor(t) };
     }
   };
   knockout.forEach((m) => {

@@ -2,7 +2,7 @@
 
 // Baked-in snapshot of the bracket, used as a durable fallback when the live feed is
 // unavailable or returns invalid data, and as the permanent source once FREEZE_BRACKET is set.
-// Regenerate by capturing GET /api/results .bracket (see README/notes). Last captured mid-tournament.
+// Regenerate by capturing GET /api/results .bracket. Last captured mid-tournament.
 export const FALLBACK_BRACKET: BracketData = {
     "teams":  {
                   "759":  {
@@ -137,12 +137,12 @@ export const FALLBACK_BRACKET: BracketData = {
                           },
                   "1060":  {
                                "id":  "1060",
-                               "name":  "Bosnia-Herzegovina",
+                               "name":  "Bosnia \u0026 Herzegovina",
                                "crest":  "https://hatscripts.github.io/circle-flags/flags/ba.svg"
                            },
                   "1930":  {
                                "id":  "1930",
-                               "name":  "Cape Verde Islands",
+                               "name":  "Cape Verde",
                                "crest":  "https://hatscripts.github.io/circle-flags/flags/cv.svg"
                            },
                   "1934":  {
@@ -208,6 +208,6 @@ export const FALLBACK_BRACKET: BracketData = {
                 },
     "finished":  4,
     "total":  31,
-    "lastUpdated":  "2026-06-30T11:38:34.385Z"
+    "lastUpdated":  "2026-06-30T12:35:25.622Z"
 };
 
