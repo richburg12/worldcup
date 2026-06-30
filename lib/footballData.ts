@@ -1,0 +1,199 @@
+// Integration with football-data.org (https://www.football-data.org).
+// Free tier: pass the token in the `X-Auth-Token` header; ~10 requests/minute.
+//
+// We only read knockout-stage matches for the World Cup and turn them into our
+// bracket "results" (which match was finished, and who won). The exact mapping
+// from football-data's match list to our circular bracket positions is finalised
+// after we inspect the live data shape (see /api/results?debug=1).
+
+const BASE = 'https://api.football-data.org/v4';
+
+export type FdScore = {
+  winner: 'HOME_TEAM' | 'AWAY_TEAM' | 'DRAW' | null;
+  duration?: string;
+  fullTime?: { home: number | null; away: number | null };
+  penalties?: { home: number | null; away: number | null };
+};
+
+export type FdTeam = { id: number | null; name: string | null; tla?: string | null; crest?: string | null };
+
+export type FdMatch = {
+  id: number;
+  stage: string; // e.g. LAST_16, QUARTER_FINALS, SEMI_FINALS, FINAL, (LAST_32 for 48-team format)
+  group: string | null;
+  status: string; // SCHEDULED, TIMED, IN_PLAY, PAUSED, FINISHED, ...
+  utcDate: string;
+  homeTeam: FdTeam;
+  awayTeam: FdTeam;
+  score: FdScore;
+};
+
+const KNOCKOUT_STAGES = ['LAST_32', 'LAST_16', 'QUARTER_FINALS', 'SEMI_FINALS', 'FINAL'];
+
+function token(): string {
+  const t = process.env.FOOTBALL_DATA_TOKEN;
+  if (!t) throw new Error('FOOTBALL_DATA_TOKEN is not set');
+  return t;
+}
+
+function competition(): string {
+  return process.env.FOOTBALL_DATA_COMPETITION || 'WC';
+}
+
+// Fetch all matches for the configured competition.
+export async function fetchMatches(): Promise<FdMatch[]> {
+  const res = await fetch(`${BASE}/competitions/${competition()}/matches`, {
+    headers: { 'X-Auth-Token': token() },
+    // football-data is rate-limited; let Next cache the upstream call briefly.
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`football-data ${res.status}: ${body.slice(0, 200)}`);
+  }
+  const data = (await res.json()) as { matches?: FdMatch[] };
+  return data.matches ?? [];
+}
+
+export function knockoutMatches(matches: FdMatch[]): FdMatch[] {
+  return matches.filter((m) => KNOCKOUT_STAGES.includes(m.stage));
+}
+
+export function winningTeam(m: FdMatch): FdTeam | null {
+  if (m.status !== 'FINISHED' || !m.score) return null;
+  if (m.score.winner === 'HOME_TEAM') return m.homeTeam;
+  if (m.score.winner === 'AWAY_TEAM') return m.awayTeam;
+  return null; // draw with no winner field -> not resolved here
+}
+
+function pairKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
+}
+
+export type BracketTeam = { id: string; name: string; crest: string | null };
+
+// football-data crests are a mix of national flags and federation logos. For a consistent
+// circular-flag look we map each nation to a circle-flags ISO code; anything not mapped falls
+// back to the API crest, so unknown teams still render.
+const NAME_TO_ISO: Record<string, string> = {
+  Brazil: 'br', Japan: 'jp', 'Ivory Coast': 'ci', Norway: 'no', Mexico: 'mx', Ecuador: 'ec',
+  England: 'gb-eng', 'Congo DR': 'cd', Argentina: 'ar', 'Cape Verde Islands': 'cv', Australia: 'au',
+  Egypt: 'eg', Switzerland: 'ch', Algeria: 'dz', Colombia: 'co', Ghana: 'gh', Germany: 'de',
+  Paraguay: 'py', France: 'fr', Sweden: 'se', 'South Africa': 'za', Canada: 'ca', Netherlands: 'nl',
+  Morocco: 'ma', Portugal: 'pt', Croatia: 'hr', Spain: 'es', Austria: 'at', 'United States': 'us',
+  'Bosnia-Herzegovina': 'ba', Belgium: 'be', Senegal: 'sn',
+};
+
+function flagFor(t: FdTeam): string | null {
+  const iso = t.name ? NAME_TO_ISO[t.name] : undefined;
+  if (iso) return `https://hatscripts.github.io/circle-flags/flags/${iso}.svg`;
+  return t.crest ?? null;
+}
+
+export type BracketData = {
+  teams: Record<string, BracketTeam>;
+  seed: (string | null)[]; // 32 team ids in tree-leaf order (consecutive pairs are R32 matches)
+  results: Record<string, string>; // `${round}:${matchIndex}` -> winning team id (finalised only)
+  finished: number; // count of finished knockout matches
+  total: number; // total knockout matches
+  lastUpdated: string;
+};
+
+// Round sizes from R32 (outer) inward; matches per round = size / 2.
+const ROUND_SIZES = [32, 16, 8, 4, 2, 1];
+
+// Turn the live football-data match list into our circular-bracket model.
+// We rely on two facts confirmed from the live feed:
+//   1. Round-of-32 matches, ordered by id, are in bracket order; consecutive pairs (0,1)(2,3)...
+//      feed each next-round match.
+//   2. Winners are linked across rounds by team identity, so finished results chain forward
+//      with no guesswork.
+export function buildBracket(matches: FdMatch[]): BracketData {
+  const knockout = knockoutMatches(matches);
+
+  const teams: Record<string, BracketTeam> = {};
+  const register = (t: FdTeam | undefined | null) => {
+    if (t && t.id != null) {
+      const id = String(t.id);
+      if (!teams[id]) teams[id] = { id, name: t.name ?? id, crest: flagFor(t) };
+    }
+  };
+  knockout.forEach((m) => {
+    register(m.homeTeam);
+    register(m.awayTeam);
+  });
+
+  // R32 in bracket order. We then place the second half first so it renders on the right,
+  // matching the source image's orientation (purely cosmetic).
+  const r32 = knockout.filter((m) => m.stage === 'LAST_32').sort((a, b) => a.id - b.id);
+  const ordered = r32.slice(8).concat(r32.slice(0, 8));
+
+  const seed: (string | null)[] = [];
+  ordered.forEach((m) => {
+    seed.push(m.homeTeam?.id != null ? String(m.homeTeam.id) : null);
+    seed.push(m.awayTeam?.id != null ? String(m.awayTeam.id) : null);
+  });
+
+  // Lookup of finished matches keyed by the (unordered) pair of team ids -> winner id.
+  const winners = new Map<string, string>();
+  let finished = 0;
+  for (const m of knockout) {
+    const w = winningTeam(m);
+    if (w?.id != null && m.homeTeam?.id != null && m.awayTeam?.id != null) {
+      winners.set(pairKey(String(m.homeTeam.id), String(m.awayTeam.id)), String(w.id));
+      finished++;
+    }
+  }
+
+  // Walk the tree top-down: a match resolves only when both its teams are known and that exact
+  // pairing has a finished result. This chains forward correctly as the tournament progresses.
+  const slots: (string | null)[][] = ROUND_SIZES.map((n) => new Array(n).fill(null));
+  for (let i = 0; i < seed.length; i++) slots[0][i] = seed[i];
+  const results: Record<string, string> = {};
+  for (let r = 0; r < ROUND_SIZES.length - 1; r++) {
+    const matchCount = ROUND_SIZES[r] / 2;
+    for (let m = 0; m < matchCount; m++) {
+      const a = slots[r][2 * m];
+      const b = slots[r][2 * m + 1];
+      if (a && b) {
+        const wid = winners.get(pairKey(a, b));
+        if (wid) {
+          results[`${r}:${m}`] = wid;
+          slots[r + 1][m] = wid;
+        }
+      }
+    }
+  }
+
+  return {
+    teams,
+    seed,
+    results,
+    finished,
+    total: knockout.length,
+    lastUpdated: new Date().toISOString(),
+  };
+}
+
+// Compact summary used to inspect the real data shape before finalising the
+// bracket mapping. Hit /api/results?debug=1 once the token is set.
+export function summarise(matches: FdMatch[]) {
+  const byStage: Record<string, { total: number; finished: number; sample: unknown[] }> = {};
+  for (const m of matches) {
+    const s = (byStage[m.stage] ||= { total: 0, finished: 0, sample: [] });
+    s.total++;
+    if (m.status === 'FINISHED') s.finished++;
+    if (s.sample.length < 3) {
+      s.sample.push({
+        id: m.id,
+        group: m.group,
+        status: m.status,
+        utcDate: m.utcDate,
+        home: m.homeTeam?.name,
+        away: m.awayTeam?.name,
+        winner: m.score?.winner ?? null,
+      });
+    }
+  }
+  return { totalMatches: matches.length, stages: byStage };
+}
