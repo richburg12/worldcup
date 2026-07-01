@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import CircularBracket from '@/components/CircularBracket';
+import HitCounter from '@/components/HitCounter';
 
 export const metadata: Metadata = {
   title: 'World Cup 2026 Bracket',
@@ -16,6 +17,7 @@ export default function WorldCupPage() {
         </Link>
       </div>
       <CircularBracket />
+      <HitCounter />
     </main>
   );
 }
