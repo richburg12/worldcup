@@ -8,7 +8,9 @@ export const revalidate = 0;
 // visitor to the leaderboard with a status flag the page uses to show a confirmation banner.
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token') ?? '';
-  const dest = new URL('/leaderboard', request.nextUrl.origin);
+  // Land on the bracket page and jump to the leaderboard section, where the confirmation banner shows.
+  const dest = new URL('/worldcup', request.nextUrl.origin);
+  dest.hash = 'leaderboard';
 
   if (!token) {
     dest.searchParams.set('verified', '0');

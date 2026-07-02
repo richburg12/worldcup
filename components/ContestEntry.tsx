@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import type { Picks } from '@/lib/bracket';
 
 // The "enter to win" flow for the bracket page. Shows a call-to-action once the visitor has filled
@@ -80,7 +79,7 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
         {locked ? (
           <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm font-medium text-stone-500 ring-1 ring-stone-200">
             Entries are closed — the Round of 16 has kicked off. Follow along on the{' '}
-            <Link href="/leaderboard" className="font-semibold text-amber-600 hover:underline">leaderboard</Link>.
+            <a href="#leaderboard" className="font-semibold text-amber-600 hover:underline">leaderboard</a> below.
           </p>
         ) : (
           <>
@@ -106,9 +105,9 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
               >
                 Enter the contest
               </button>
-              <Link href="/leaderboard" className="text-sm font-semibold text-amber-700 hover:underline">
-                View leaderboard →
-              </Link>
+              <a href="#leaderboard" className="text-sm font-semibold text-amber-700 hover:underline">
+                View leaderboard ↓
+              </a>
             </div>
             {lock && (
               <p className="mt-3 text-xs text-stone-400">

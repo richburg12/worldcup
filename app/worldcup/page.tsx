@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import CircularBracket from '@/components/CircularBracket';
+import Leaderboard from '@/components/Leaderboard';
 import HitCounter from '@/components/HitCounter';
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function WorldCupPage() {
         </Link>
       </div>
       <CircularBracket />
+      <Leaderboard />
       <HitCounter />
     </main>
   );

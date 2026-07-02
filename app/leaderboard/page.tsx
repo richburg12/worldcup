@@ -1,11 +1,7 @@
-import type { Metadata } from 'next';
-import Leaderboard from '@/components/Leaderboard';
+import { redirect } from 'next/navigation';
 
-export const metadata: Metadata = {
-  title: 'World Cup Bracket Contest — Leaderboard',
-  description: 'Live leaderboard for the World Cup 2026 bracket contest. Best score wins a fajita dinner for 4.',
-};
-
+// The leaderboard now lives on the bracket page, directly below the entry card. Keep this route
+// as a permanent redirect so any older links (or already-sent emails) still land in the right place.
 export default function LeaderboardPage() {
-  return <Leaderboard />;
+  redirect('/worldcup#leaderboard');
 }
