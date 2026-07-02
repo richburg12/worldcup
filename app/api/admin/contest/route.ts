@@ -1,0 +1,74 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { deleteEntry, listAllEntries, renameEntry } from '@/lib/db';
+import { validUsername } from '@/lib/contest';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+// Lightweight admin gate: a shared secret in the x-admin-token header, compared to ADMIN_TOKEN.
+// No sessions/cookies — adequate for a single operator on a low-stakes promo. Returns a response
+// to short-circuit on failure, or null to proceed.
+function guard(request: NextRequest): NextResponse | null {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) {
+    return NextResponse.json({ ok: false, error: 'Admin not configured.' }, { status: 503 });
+  }
+  const provided = request.headers.get('x-admin-token');
+  if (!provided || provided !== expected) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+  }
+  return null;
+}
+
+// List every entry (including private emails) for the admin table.
+export async function GET(request: NextRequest) {
+  const denied = guard(request);
+  if (denied) return denied;
+  try {
+    return NextResponse.json({ ok: true, entries: await listAllEntries() });
+  } catch (err) {
+    console.error('[ADMIN] list entries failed:', err);
+    return NextResponse.json({ ok: false, error: 'Could not load entries.' }, { status: 500 });
+  }
+}
+
+// Delete an entry by id.
+export async function DELETE(request: NextRequest) {
+  const denied = guard(request);
+  if (denied) return denied;
+  const id = Number(request.nextUrl.searchParams.get('id'));
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json({ ok: false, error: 'Bad id.' }, { status: 400 });
+  }
+  try {
+    await deleteEntry(id);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[ADMIN] delete entry failed:', err);
+    return NextResponse.json({ ok: false, error: 'Delete failed.' }, { status: 500 });
+  }
+}
+
+// Rename an entry's public display name (e.g. to neutralise something borderline without deleting).
+export async function PATCH(request: NextRequest) {
+  const denied = guard(request);
+  if (denied) return denied;
+  let body: { id?: unknown; displayName?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
+  }
+  const id = Number(body.id);
+  const displayName = typeof body.displayName === 'string' ? body.displayName.trim() : '';
+  if (!Number.isInteger(id) || id <= 0 || !validUsername(displayName)) {
+    return NextResponse.json({ ok: false, error: 'Bad id or name.' }, { status: 400 });
+  }
+  try {
+    await renameEntry(id, displayName);
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error('[ADMIN] rename entry failed:', err);
+    return NextResponse.json({ ok: false, error: 'Rename failed.' }, { status: 500 });
+  }
+}

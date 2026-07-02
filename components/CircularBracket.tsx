@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BANDS, CX, CY, computeBracket, MATCH_LINKS, NODES, Picks, polar, ROUNDS } from '@/lib/bracket';
 import type { BracketData } from '@/lib/footballData';
+import ContestEntry from '@/components/ContestEntry';
 
 const STORAGE_KEY = 'wc2026-picks-v1';
 const POLL_MS = 60_000;
@@ -372,6 +373,14 @@ export default function CircularBracket() {
 
       {champion && teamOf(champion) && (
         <p className="mb-6 -mt-2 text-center text-lg font-semibold text-stone-800">🏆 Your champion: {teamOf(champion)!.name}</p>
+      )}
+
+      {data && (
+        <ContestEntry
+          picks={validPicks}
+          complete={!!champion}
+          championName={champion && teamOf(champion) ? teamOf(champion)!.name : null}
+        />
       )}
 
       {/* Below the bracket so toggling Times on doesn't push the chart down. */}
