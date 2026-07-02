@@ -38,6 +38,14 @@ export function isLocked(nowMs: number): boolean {
   return nowMs >= Date.parse(lockIso());
 }
 
+// When the last Round-of-32 match is expected to finish (~4:30am London / 03:30 UTC on 2026-07-04).
+// Until then the R16 field isn't fully set, so entering is allowed but disadvantageous — the UI
+// shows a "you'd have better odds waiting" nudge that switches off once this passes.
+// Env-overridable for testing.
+export function r32DoneIso(): string {
+  return process.env.CONTEST_R32_DONE_ISO || '2026-07-04T03:30:00Z';
+}
+
 // ---- scoring ----
 
 export type ScoreBreakdown = {

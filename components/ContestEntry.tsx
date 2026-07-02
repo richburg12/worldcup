@@ -12,7 +12,7 @@ type Props = { picks: Picks; complete: boolean; championName: string | null };
 
 type Submit = { state: 'idle' | 'sending' | 'sent' | 'error'; message?: string };
 
-function formatLock(iso: string): string {
+function formatWhen(iso: string): string {
   try {
     return new Date(iso).toLocaleString(undefined, {
       weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
@@ -28,12 +28,12 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
   const [email, setEmail] = useState('');
   const [goals, setGoals] = useState('');
   const [submit, setSubmit] = useState<Submit>({ state: 'idle' });
-  const [lock, setLock] = useState<{ locked: boolean; lockIso: string } | null>(null);
+  const [lock, setLock] = useState<{ locked: boolean; lockIso: string; r32DoneIso: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/contest/status', { cache: 'no-store' })
       .then((r) => r.json())
-      .then((j) => j.ok && setLock({ locked: j.locked, lockIso: j.lockIso }))
+      .then((j) => j.ok && setLock({ locked: j.locked, lockIso: j.lockIso, r32DoneIso: j.r32DoneIso }))
       .catch(() => {});
   }, []);
 
@@ -63,6 +63,7 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
   }
 
   const locked = lock?.locked ?? false;
+  const r32InProgress = !!lock && Date.now() < Date.parse(lock.r32DoneIso);
 
   return (
     <section className="mt-2 mb-8 w-full max-w-[560px] px-5">
@@ -83,6 +84,14 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
           </p>
         ) : (
           <>
+            {r32InProgress && (
+              <div className="mt-4 rounded-lg bg-amber-100/70 px-3 py-2.5 text-left text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+                <span className="font-semibold">⏳ The Round of 32 is still being played.</span> You&apos;re
+                welcome to enter now, but a pick only scores if that team actually reaches the Round of 16 — so
+                you&apos;d have better odds waiting until all 16 teams are known
+                {lock ? ` (about ${formatWhen(lock.r32DoneIso)} your time)` : ''}, then entering before the lock.
+              </div>
+            )}
             {!complete && (
               <p className="mt-4 text-sm text-stone-500">
                 Fill out your full bracket first — pick a winner all the way to the champion, then come back
@@ -103,8 +112,7 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
             </div>
             {lock && (
               <p className="mt-3 text-xs text-stone-400">
-                Entries close at kickoff of the first Round-of-16 match ({formatLock(lock.lockIso)} your time).
-                Tip: wait until the Round of 32 is done so you know the 16 teams.
+                Entries close at kickoff of the first Round-of-16 match — {formatWhen(lock.lockIso)} your time.
               </p>
             )}
           </>
@@ -141,6 +149,13 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
                 {championName && (
                   <p className="mt-1 text-sm text-stone-500">
                     Your champion pick: <span className="font-semibold text-stone-700">{championName}</span> 🏆
+                  </p>
+                )}
+                {r32InProgress && (
+                  <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-inset ring-amber-200">
+                    Heads up: the Round of 32 isn&apos;t finished yet, so some picks may be teams that don&apos;t
+                    reach the R16. You can still enter — but you&apos;d have better odds waiting until the 16
+                    teams are set.
                   </p>
                 )}
 
