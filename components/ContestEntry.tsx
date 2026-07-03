@@ -77,7 +77,7 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
               <div className="mt-4 rounded-lg bg-amber-100/70 px-3 py-2.5 text-left text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
                 <span className="font-semibold">⏳ The Round of 32 is still being played.</span> You&apos;re
                 welcome to enter now, but a pick only scores if that team actually reaches the Round of 16 — so
-                you&apos;d have better odds waiting until all 16 teams are known — Saturday afternoon, once the
+                you&apos;d have better odds waiting until all 16 teams are known — Saturday, once the
                 last Round-of-32 game wraps up — then entering before the 6pm lock.
               </div>
             )}
