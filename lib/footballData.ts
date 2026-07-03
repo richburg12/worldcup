@@ -2,9 +2,7 @@
 // Free tier: pass the token in the `X-Auth-Token` header; ~10 requests/minute.
 //
 // We only read knockout-stage matches for the World Cup and turn them into our
-// bracket "results" (which match was finished, and who won). The exact mapping
-// from football-data's match list to our circular bracket positions is finalised
-// after we inspect the live data shape (see /api/results?debug=1).
+// bracket "results" (which match was finished, and who won).
 
 import { unstable_cache } from 'next/cache';
 import { FALLBACK_BRACKET } from './fallbackBracket';
@@ -307,27 +305,4 @@ export async function getBracket(): Promise<{ bracket: BracketData; source: 'liv
     console.error('[RESULTS] live feed failed; serving fallback snapshot:', err);
   }
   return { bracket: FALLBACK_BRACKET, source: 'fallback' };
-}
-
-// Compact summary used to inspect the real data shape before finalising the
-// bracket mapping. Hit /api/results?debug=1 once the token is set.
-export function summarise(matches: FdMatch[]) {
-  const byStage: Record<string, { total: number; finished: number; sample: unknown[] }> = {};
-  for (const m of matches) {
-    const s = (byStage[m.stage] ||= { total: 0, finished: 0, sample: [] });
-    s.total++;
-    if (m.status === 'FINISHED') s.finished++;
-    if (s.sample.length < 3) {
-      s.sample.push({
-        id: m.id,
-        group: m.group,
-        status: m.status,
-        utcDate: m.utcDate,
-        home: m.homeTeam?.name,
-        away: m.awayTeam?.name,
-        winner: m.score?.winner ?? null,
-      });
-    }
-  }
-  return { totalMatches: matches.length, stages: byStage };
 }
