@@ -74,7 +74,7 @@ export default function Leaderboard() {
           Leaderboard
         </h2>
         <p className="mt-1 max-w-md text-sm text-stone-500">
-          Highest score wins a fajita dinner for 4 (up to £200) at the restaurant. 1 pt per Round-of-16 pick,
+          Highest score wins a fajita dinner for 4 (up to £200) at D GRANDE Chiswick. 1 pt per Round-of-16 pick,
           2 for quarters, 4 for semis, 8 for the champion — {meta ? meta.maxScore : 32} points possible.
         </p>
       </header>

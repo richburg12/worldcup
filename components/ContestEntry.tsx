@@ -72,8 +72,8 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
           Win a fajita dinner for 4 🌮
         </h2>
         <p className="mt-1 text-sm text-stone-600">
-          Lock in your Round-of-16-onward bracket for a chance to win dinner for four (up to £200) at the
-          restaurant. Best score wins.
+          Lock in your Round-of-16-onward bracket for a chance to win dinner for four (up to £200) at
+          D GRANDE Chiswick. Best score wins.
         </p>
 
         {locked ? (
@@ -111,7 +111,9 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
             </div>
             {lock && (
               <p className="mt-3 text-xs text-stone-400">
-                Entries close at kickoff of the first Round-of-16 match — {formatWhen(lock.lockIso)} your time.
+                Entries close at kickoff of the first Round-of-16 match — Saturday 4th, 6pm. So, in other
+                words, you&apos;ll want to make your pick during the day Saturday before Canada v Morocco
+                kicks off at 6pm!
               </p>
             )}
           </>
