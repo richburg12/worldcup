@@ -11,16 +11,6 @@ type Props = { picks: Picks; complete: boolean; championName: string | null };
 
 type Submit = { state: 'idle' | 'sending' | 'sent' | 'error'; message?: string };
 
-function formatWhen(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString(undefined, {
-      weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
-
 export default function ContestEntry({ picks, complete, championName }: Props) {
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
@@ -87,8 +77,8 @@ export default function ContestEntry({ picks, complete, championName }: Props) {
               <div className="mt-4 rounded-lg bg-amber-100/70 px-3 py-2.5 text-left text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
                 <span className="font-semibold">⏳ The Round of 32 is still being played.</span> You&apos;re
                 welcome to enter now, but a pick only scores if that team actually reaches the Round of 16 — so
-                you&apos;d have better odds waiting until all 16 teams are known
-                {lock ? ` (about ${formatWhen(lock.r32DoneIso)} your time)` : ''}, then entering before the lock.
+                you&apos;d have better odds waiting until all 16 teams are known — Saturday afternoon, once the
+                last Round-of-32 game wraps up — then entering before the 6pm lock.
               </div>
             )}
             {!complete && (
