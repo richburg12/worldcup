@@ -86,6 +86,25 @@ export function finalGoals(scores: Record<string, { a: number; b: number }>): nu
   return s ? s.a + s.b : null;
 }
 
+// Build the per-round picks summary used in the reminder email, resolving team ids to names via the
+// supplied lookup (kept pure — the caller passes bracket.teams). Missing picks render as '—'.
+export function picksSummary(
+  picks: Picks,
+  teamName: (id: string) => string | null
+): { rounds: { label: string; picks: string[] }[]; championName: string | null } {
+  const rounds = CONTEST_ROUNDS.map((r) => {
+    const matchCount = ROUNDS[r].count / 2;
+    const p = Array.from({ length: matchCount }, (_, m) => {
+      const id = picks[`${r}:${m}`];
+      return (id && teamName(id)) || '—';
+    });
+    return { label: ROUNDS[r].label, picks: p };
+  });
+  const championId = picks[FINAL_KEY];
+  const championName = (championId && teamName(championId)) || null;
+  return { rounds, championName };
+}
+
 // ---- validation ----
 
 // Keep only the contest-relevant picks (R16→Final) from a full bracket pick set.

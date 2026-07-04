@@ -22,6 +22,7 @@ export default function AdminContestPage() {
   const [entries, setEntries] = useState<AdminEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [authed, setAuthed] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
@@ -50,6 +51,22 @@ export default function AdminContestPage() {
     if (!confirm(`Delete entry "${name}"? This can't be undone.`)) return;
     await fetch(`/api/admin/contest?id=${id}`, { method: 'DELETE', headers: { 'x-admin-token': token } });
     load(token);
+  }
+
+  async function testEmail(id: number, name: string) {
+    if (!confirm(`Send a test of the "entries closed — here are your picks" email to ${name}'s address now?`)) return;
+    setNote(null);
+    try {
+      const res = await fetch('/api/admin/contest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+        body: JSON.stringify({ id, action: 'test-reminder' }),
+      });
+      const json = await res.json();
+      setNote(json.ok ? `✓ Test email sent to ${json.sentTo}` : `✗ ${json.error || 'Send failed.'}`);
+    } catch {
+      setNote('✗ Could not reach the server.');
+    }
   }
 
   async function rename(id: number, current: string) {
@@ -95,6 +112,7 @@ export default function AdminContestPage() {
       )}
 
       {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
+      {note && <p className="mt-3 text-sm font-medium text-stone-700">{note}</p>}
 
       {authed && entries.length > 0 && (
         <div className="mt-6 overflow-hidden rounded-xl border border-stone-200">
@@ -121,7 +139,11 @@ export default function AdminContestPage() {
                       <span className="text-stone-400">pending</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 text-right">
+                  <td className="px-3 py-2.5 text-right whitespace-nowrap">
+                    <button onClick={() => testEmail(e.id, e.displayName)} className="text-stone-600 hover:underline">
+                      test email
+                    </button>
+                    <span className="text-stone-300"> · </span>
                     <button onClick={() => rename(e.id, e.displayName)} className="text-amber-600 hover:underline">
                       rename
                     </button>

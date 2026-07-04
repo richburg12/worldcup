@@ -42,6 +42,9 @@ export async function initContestTables(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS contest_entries_verified_idx ON contest_entries (verified)`;
   await sql`CREATE INDEX IF NOT EXISTS contest_entries_token_idx ON contest_entries (verify_token)`;
+  // Records when the post-lock "entries closed — here are your picks" email went out, so it can
+  // never be sent to the same entrant twice. NULL = not yet sent.
+  await sql`ALTER TABLE contest_entries ADD COLUMN IF NOT EXISTS picks_reminder_sent_at TIMESTAMPTZ`;
   tablesReady = true;
 }
 
@@ -122,6 +125,36 @@ export async function listAllEntries(): Promise<AdminEntry[]> {
     FROM contest_entries ORDER BY created_at DESC
   `;
   return rows.map((r) => ({ ...rowToEntry(r), email: String(r.email) }));
+}
+
+// Confirmed entries that haven't yet been sent their post-lock picks reminder. Includes email
+// (needed to send it) — this list is never exposed publicly, only used by the reminder job.
+export async function listEntriesNeedingReminder(): Promise<AdminEntry[]> {
+  await initContestTables();
+  const { rows } = await sql`
+    SELECT id, email, display_name, picks, tiebreak_goals, verified, created_at
+    FROM contest_entries
+    WHERE verified = TRUE AND picks_reminder_sent_at IS NULL
+    ORDER BY created_at ASC
+  `;
+  return rows.map((r) => ({ ...rowToEntry(r), email: String(r.email) }));
+}
+
+// Mark that the picks reminder has been emailed to this entry, so it never goes out twice.
+export async function markReminderSent(id: number): Promise<void> {
+  await initContestTables();
+  await sql`UPDATE contest_entries SET picks_reminder_sent_at = NOW() WHERE id = ${id}`;
+}
+
+// Fetch a single entry (including email) by id, for admin actions. Null if not found.
+export async function getEntryById(id: number): Promise<AdminEntry | null> {
+  await initContestTables();
+  const { rows } = await sql`
+    SELECT id, email, display_name, picks, tiebreak_goals, verified, created_at
+    FROM contest_entries WHERE id = ${id} LIMIT 1
+  `;
+  if (rows.length === 0) return null;
+  return { ...rowToEntry(rows[0]), email: String(rows[0].email) };
 }
 
 export async function deleteEntry(id: number): Promise<void> {
