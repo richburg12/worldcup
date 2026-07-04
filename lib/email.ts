@@ -42,6 +42,8 @@ export async function sendVerificationEmail(params: {
     'Confirm your entry here:',
     link,
     '',
+    'Please confirm by the end of Tuesday 7 July (end of the Round of 16) — after that, entries can no longer be added to the leaderboard.',
+    '',
     'The best bracket when the final whistle blows wins a fajita dinner for 4 (up to £200) at D GRANDE Tex-Mex. Good luck! 🏆',
     '',
     '— The team at D GRANDE Tex-Mex',
@@ -60,6 +62,7 @@ export async function sendVerificationEmail(params: {
     </p>
     <p style="margin:0 0 6px;font-size:12px;color:#78716c;line-height:1.5;">Or paste this link into your browser:</p>
     <p style="margin:0 0 20px;font-size:12px;color:#78716c;word-break:break-all;">${link}</p>
+    <p style="margin:0 0 20px;font-size:13px;line-height:1.5;color:#57534e;">Please confirm by the <strong>end of Tuesday 7 July</strong> (end of the Round of 16) — after that, entries can no longer be added to the leaderboard.</p>
     <p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:#57534e;">Good luck!<br/>— The team at D GRANDE Tex-Mex</p>
     <p style="margin:0;font-size:12px;color:#a8a29e;line-height:1.5;">If you didn't enter, you can safely ignore this email. We'll only ever use your address to contact you if you win.</p>
   </div>

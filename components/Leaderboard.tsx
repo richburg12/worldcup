@@ -32,13 +32,14 @@ export default function Leaderboard() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [banner, setBanner] = useState<'confirmed' | 'invalid' | null>(null);
+  const [banner, setBanner] = useState<'confirmed' | 'invalid' | 'closed' | null>(null);
 
   // Read the ?verified flag set by the email link redirect (no Suspense needed this way).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const v = params.get('verified');
     if (v === '1') setBanner('confirmed');
+    else if (v === '2') setBanner('closed');
     else if (v === '0') setBanner('invalid');
   }, []);
 
@@ -87,6 +88,12 @@ export default function Leaderboard() {
       {banner === 'invalid' && (
         <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-600 ring-1 ring-inset ring-red-600/20">
           That confirmation link is invalid or expired. Scroll up and enter again.
+        </div>
+      )}
+      {banner === 'closed' && (
+        <div className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+          Confirmations have closed — the deadline to confirm your entry (end of the Round of 16) has passed, so this
+          entry couldn&apos;t be added to the leaderboard.
         </div>
       )}
 

@@ -95,16 +95,20 @@ export async function upsertUnverifiedEntry(params: {
   return { status: 'created', token, displayName: params.displayName };
 }
 
-// Mark the entry with this token verified. Returns true if a (previously unverified) entry was
-// found; idempotent-friendly — re-clicking a link for an already-verified entry also returns true.
-export async function verifyByToken(token: string): Promise<boolean> {
+export type VerifyResult = 'verified' | 'not_found' | 'too_late';
+
+// Mark the entry with this token verified. `confirmationsOpen` gates NEW confirmations only: once
+// the confirmation window has closed a still-unverified entry can no longer be confirmed
+// ('too_late'). An already-verified entry re-clicking its link always succeeds ('verified'), even
+// after the cutoff, so a double-click or a later re-visit is never treated as an error.
+export async function verifyByToken(token: string, confirmationsOpen: boolean): Promise<VerifyResult> {
   await initContestTables();
   const found = await sql`SELECT id, verified FROM contest_entries WHERE verify_token = ${token} LIMIT 1`;
-  if (found.rows.length === 0) return false;
-  if (!found.rows[0].verified) {
-    await sql`UPDATE contest_entries SET verified = TRUE, verified_at = NOW() WHERE verify_token = ${token}`;
-  }
-  return true;
+  if (found.rows.length === 0) return 'not_found';
+  if (found.rows[0].verified) return 'verified'; // already confirmed — re-click is fine anytime
+  if (!confirmationsOpen) return 'too_late';
+  await sql`UPDATE contest_entries SET verified = TRUE, verified_at = NOW() WHERE verify_token = ${token}`;
+  return 'verified';
 }
 
 // Verified entries only, for the public leaderboard. No email field.

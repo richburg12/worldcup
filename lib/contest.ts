@@ -38,6 +38,18 @@ export function isLocked(nowMs: number): boolean {
   return nowMs >= Date.parse(lockIso());
 }
 
+// Confirmations (clicking the verify link) are accepted only up to this moment — the end of the day
+// on 7 Jul London, i.e. midnight going into the 8th (BST = UTC+1, so 23:00 UTC on the 7th), roughly
+// the end of the Round of 16. After this an unconfirmed entry can no longer be confirmed, so nobody
+// can suddenly appear on the leaderboard deep into the contest. Env-overridable for testing.
+export function confirmCutoffIso(): string {
+  return process.env.CONTEST_CONFIRM_CUTOFF_ISO || '2026-07-07T23:00:00Z';
+}
+
+export function confirmationsClosed(nowMs: number): boolean {
+  return nowMs >= Date.parse(confirmCutoffIso());
+}
+
 // When the last Round-of-32 match is expected to finish (~4:30am London / 03:30 UTC on 2026-07-04).
 // Until then the R16 field isn't fully set, so entering is allowed but disadvantageous — the UI
 // shows a "you'd have better odds waiting" nudge that switches off once this passes.

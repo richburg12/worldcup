@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyByToken } from '@/lib/db';
+import { confirmationsClosed } from '@/lib/contest';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -18,8 +19,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const ok = await verifyByToken(token);
-    dest.searchParams.set('verified', ok ? '1' : '0');
+    const result = await verifyByToken(token, !confirmationsClosed(Date.now()));
+    // 1 = confirmed, 2 = confirmation window closed, 0 = invalid/unknown token.
+    dest.searchParams.set('verified', result === 'verified' ? '1' : result === 'too_late' ? '2' : '0');
   } catch (err) {
     console.error('[CONTEST] verify failed:', err);
     dest.searchParams.set('verified', '0');
