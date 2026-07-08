@@ -45,6 +45,16 @@ export async function initContestTables(): Promise<void> {
   // Records when the post-lock "entries closed — here are your picks" email went out, so it can
   // never be sent to the same entrant twice. NULL = not yet sent.
   await sql`ALTER TABLE contest_entries ADD COLUMN IF NOT EXISTS picks_reminder_sent_at TIMESTAMPTZ`;
+  // Manual result overrides: when the admin marks a knockout winner before the data feed reports
+  // it, we store `${round}:${matchIndex}` -> winning team id here. buildBracket() applies these on
+  // top of the live feed (override wins), so the public bracket + leaderboard update instantly.
+  await sql`
+    CREATE TABLE IF NOT EXISTS result_overrides (
+      match_key      TEXT PRIMARY KEY,
+      winner_team_id TEXT NOT NULL,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
   tablesReady = true;
 }
 
@@ -169,6 +179,33 @@ export async function deleteEntry(id: number): Promise<void> {
 export async function renameEntry(id: number, displayName: string): Promise<void> {
   await initContestTables();
   await sql`UPDATE contest_entries SET display_name = ${displayName} WHERE id = ${id}`;
+}
+
+// ---- manual result overrides ----
+
+// All current overrides as `${round}:${matchIndex}` -> winning team id. Fed into buildBracket().
+export async function listResultOverrides(): Promise<Record<string, string>> {
+  await initContestTables();
+  const { rows } = await sql`SELECT match_key, winner_team_id FROM result_overrides`;
+  const out: Record<string, string> = {};
+  for (const r of rows) out[String(r.match_key)] = String(r.winner_team_id);
+  return out;
+}
+
+// Set (or replace) the manual winner for a match. Idempotent upsert on match_key.
+export async function setResultOverride(matchKey: string, winnerId: string): Promise<void> {
+  await initContestTables();
+  await sql`
+    INSERT INTO result_overrides (match_key, winner_team_id, created_at)
+    VALUES (${matchKey}, ${winnerId}, NOW())
+    ON CONFLICT (match_key) DO UPDATE SET winner_team_id = EXCLUDED.winner_team_id, created_at = NOW()
+  `;
+}
+
+// Remove a manual override, so the match falls back to the live feed result.
+export async function clearResultOverride(matchKey: string): Promise<void> {
+  await initContestTables();
+  await sql`DELETE FROM result_overrides WHERE match_key = ${matchKey}`;
 }
 
 function rowToEntry(r: Record<string, unknown>): Entry {

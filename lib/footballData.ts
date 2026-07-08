@@ -6,6 +6,7 @@
 
 import { unstable_cache } from 'next/cache';
 import { FALLBACK_BRACKET } from './fallbackBracket';
+import { listResultOverrides } from './db';
 
 const BASE = 'https://api.football-data.org/v4';
 
@@ -112,7 +113,11 @@ function displayName(t: FdTeam, id: string): string {
 export type BracketData = {
   teams: Record<string, BracketTeam>;
   seed: (string | null)[]; // 32 team ids in tree-leaf order (consecutive pairs are R32 matches)
-  results: Record<string, string>; // `${round}:${matchIndex}` -> winning team id (finalised only)
+  results: Record<string, string>; // `${round}:${matchIndex}` -> winning team id (finalised; includes manual overrides)
+  // Feed-only winners (same shape as `results`, but before manual overrides are applied). Lets the
+  // admin page flag when a manual override disagrees with what the data feed now reports.
+  // Optional so the baked-in fallback snapshot (captured before this field existed) stays valid.
+  feedResults?: Record<string, string>;
   // `${round}:${matchIndex}` -> full-time score for slot A (2m) and slot B (2m+1). Excludes shootouts.
   scores: Record<string, { a: number; b: number }>;
   // `${round}:${matchIndex}` -> UTC kickoff ISO string (any matchup with >=1 known team).
@@ -159,7 +164,7 @@ const KNOCKOUT_WIRING: Record<string, { round: number; slot: number }> = {
 //      feed each next-round match.
 //   2. Winners are linked across rounds by team identity, so finished results chain forward
 //      with no guesswork.
-export function buildBracket(matches: FdMatch[]): BracketData {
+export function buildBracket(matches: FdMatch[], overrides: Record<string, string> = {}): BracketData {
   const knockout = knockoutMatches(matches);
 
   const teams: Record<string, BracketTeam> = {};
@@ -235,22 +240,29 @@ export function buildBracket(matches: FdMatch[]): BracketData {
   const slots: (string | null)[][] = ROUND_SIZES.map((n) => new Array(n).fill(null));
   for (let i = 0; i < seed.length; i++) slots[0][i] = seed[i];
   const results: Record<string, string> = {};
+  const feedResults: Record<string, string> = {};
   const scores: Record<string, { a: number; b: number }> = {};
   for (let r = 0; r < ROUND_SIZES.length - 1; r++) {
     const matchCount = ROUND_SIZES[r] / 2;
     for (let m = 0; m < matchCount; m++) {
+      const key = `${r}:${m}`;
       const a = slots[r][2 * m];
       const b = slots[r][2 * m + 1];
       if (a && b) {
-        const wid = winners.get(pairKey(a, b));
+        const feedWid = winners.get(pairKey(a, b));
+        if (feedWid) feedResults[key] = feedWid;
+        // A manual override wins over the feed, but only if its winner is actually one of the two
+        // teams currently in this slot (guards against a stale override if the matchup changed).
+        const overrideWid = overrides[key];
+        const wid = overrideWid === a || overrideWid === b ? overrideWid : feedWid;
         if (wid) {
-          results[`${r}:${m}`] = wid;
+          results[key] = wid;
           slots[r + 1][m] = wid;
         }
         const sp = scoreByPair.get(pairKey(a, b));
         if (sp) {
           // Map the feed's home/away scores onto slot A (2m) and slot B (2m+1).
-          scores[`${r}:${m}`] = { a: sp.homeId === a ? sp.home : sp.away, b: sp.homeId === b ? sp.home : sp.away };
+          scores[key] = { a: sp.homeId === a ? sp.home : sp.away, b: sp.homeId === b ? sp.home : sp.away };
         }
       }
     }
@@ -260,6 +272,7 @@ export function buildBracket(matches: FdMatch[]): BracketData {
     teams,
     seed,
     results,
+    feedResults,
     scores,
     dates,
     finished,
@@ -268,14 +281,30 @@ export function buildBracket(matches: FdMatch[]): BracketData {
   };
 }
 
-// Shared, cross-instance snapshot of the bracket. football-data is hit at most once every
+// Shared, cross-instance snapshot of the RAW feed. football-data is hit at most once every
 // 60 seconds globally (not per visitor), keeping us well under the free-tier rate limit.
 // If a refresh fails, Next.js keeps serving the last good snapshot.
-export const getBracketSnapshot = unstable_cache(
-  async (): Promise<BracketData> => buildBracket(await fetchMatches()),
-  ['wc-bracket-snapshot-v3'],
+const getMatchesSnapshot = unstable_cache(
+  async (): Promise<FdMatch[]> => fetchMatches(),
+  ['wc-matches-snapshot-v1'],
   { revalidate: 60, tags: ['wc-bracket'] }
 );
+
+// Build the live bracket from the (60s-cached) feed plus any manual admin overrides. Overrides are
+// read fresh from the DB on every call — NOT part of the 60s cache — so a winner the operator sets
+// goes live on the very next read, with no cache-busting needed. buildBracket is pure and cheap.
+async function getLiveBracket(): Promise<BracketData> {
+  const matches = await getMatchesSnapshot();
+  // Overrides are a best-effort enhancement on top of the feed. If the contest DB is unavailable,
+  // we still serve the live feed bracket (just without any manual overrides) rather than failing.
+  let overrides: Record<string, string> = {};
+  try {
+    overrides = await listResultOverrides();
+  } catch (err) {
+    console.error('[RESULTS] override load failed; serving feed without overrides:', err);
+  }
+  return buildBracket(matches, overrides);
+}
 
 // A bracket is "usable" only if it's a full 32-team draw — guards against the feed
 // returning an empty/partial future season if the WC code ever repoints.
@@ -298,7 +327,7 @@ export async function getBracket(): Promise<{ bracket: BracketData; source: 'liv
     return { bracket: FALLBACK_BRACKET, source: 'frozen' };
   }
   try {
-    const live = await getBracketSnapshot();
+    const live = await getLiveBracket();
     if (isUsableBracket(live)) return { bracket: live, source: 'live' };
     console.warn('[RESULTS] live feed returned an unusable bracket; serving fallback snapshot');
   } catch (err) {

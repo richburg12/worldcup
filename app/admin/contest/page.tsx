@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import AdminResults from '@/components/AdminResults';
 
 // Minimal single-operator admin: paste the ADMIN_TOKEN once (kept in localStorage), then view
 // every entry (including private emails) and delete or rename any of them. Not a full auth system
@@ -109,6 +110,12 @@ export default function AdminContestPage() {
         </form>
       ) : (
         <p className="mt-2 text-sm text-stone-500">{entries.length} total entries</p>
+      )}
+
+      {authed && (
+        <div className="mt-6">
+          <AdminResults token={token} />
+        </div>
       )}
 
       {error && <p className="mt-3 text-sm text-red-500">{error}</p>}
