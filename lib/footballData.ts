@@ -69,8 +69,21 @@ export function knockoutMatches(matches: FdMatch[]): FdMatch[] {
   return matches.filter((m) => KNOCKOUT_STAGES.includes(m.stage));
 }
 
+// Statuses where a match is NOT yet decided (upcoming or still being played). Anything outside
+// this set that carries a decisive full-time winner is treated as played.
+const PENDING_STATUSES = new Set(['SCHEDULED', 'TIMED', 'IN_PLAY', 'PAUSED', 'POSTPONED', 'SUSPENDED', 'CANCELLED']);
+
 export function winningTeam(m: FdMatch): FdTeam | null {
-  if (m.status !== 'FINISHED' || !m.score) return null;
+  if (!m.score) return null;
+  // Normally the feed marks a played match 'FINISHED'. But we've seen football-data occasionally
+  // emit a malformed status on an otherwise-complete match (e.g. the kickoff timestamp string
+  // instead of 'FINISHED'), which would wrongly hide a finished result and break every match
+  // downstream of it. So also accept any match that has a decisive full-time winner and is NOT in
+  // a known pending / in-play state.
+  const decided =
+    m.status === 'FINISHED' ||
+    (!PENDING_STATUSES.has(m.status) && (m.score.winner === 'HOME_TEAM' || m.score.winner === 'AWAY_TEAM'));
+  if (!decided) return null;
   if (m.score.winner === 'HOME_TEAM') return m.homeTeam;
   if (m.score.winner === 'AWAY_TEAM') return m.awayTeam;
   return null; // draw with no winner field -> not resolved here
