@@ -34,6 +34,18 @@ function MargaritaGlass({ className }: { className?: string }) {
   );
 }
 
+// Concentric-ring bullseye target.
+function Bullseye({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="21" fill="none" stroke="#0c0a09" strokeWidth="2.2" />
+      <circle cx="24" cy="24" r="14" fill="none" stroke="#0c0a09" strokeWidth="2.2" />
+      <circle cx="24" cy="24" r="7" fill="#dc2626" stroke="#0c0a09" strokeWidth="2.2" />
+      <circle cx="24" cy="24" r="2" fill="#0c0a09" />
+    </svg>
+  );
+}
+
 const projects: Project[] = [
   {
     href: '/worldcup',
@@ -49,6 +61,15 @@ const projects: Project[] = [
     icon: <MargaritaGlass className="h-11 w-11" />,
     title: 'D GRANDE Margarita Sales Counter',
     blurb: 'A live, POS-connected margarita sales counter for D GRANDE — Real Tex-Mex by Real Texans.',
+    tag: 'Live',
+  },
+  {
+    href: 'https://avara-production.up.railway.app/',
+    external: true, // opens in a new tab
+    icon: <Bullseye className="h-11 w-11" />,
+    title: 'AVARA Remake',
+    blurb:
+      'AVARA is the first FPS I fell in love with (a 1990s game from Ambrosia Software). I’d wanted to play it again for almost 30 years. So… since we can just make shit now…',
     tag: 'Live',
   },
 ];
