@@ -5,7 +5,7 @@
 // redirect, so we host no images ourselves. Plain <img> (not next/image) so no
 // domain config is needed.
 
-import { useMemo, useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 const STATES = [
   "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
@@ -122,7 +122,7 @@ export default function FlagsPage() {
   );
 }
 
-function btn(bg: string, fg: string): React.CSSProperties {
+function btn(bg: string, fg: string): CSSProperties {
   return {
     background: bg,
     color: fg,
